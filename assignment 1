@@ -1,1 +1,53 @@
+from decimal import Decimal, ROUND_DOWN
 
+BASE_RATE = Decimal("32.00")
+FAT_STEP_RATE = Decimal("0.45")
+BONUS_RATE = Decimal("0.50")
+
+def select_rate(season, seasonal_rate):
+    if season == "seasonal":
+        return seasonal_rate
+    return BASE_RATE
+
+def calculate_bonus(total_litres):
+    if total_litres > 500:
+        return BONUS_RATE
+    return Decimal("0.00")
+
+def calculate_payment(litres, fat, snf, rate, total_litres):
+    # Assumption: one fat step = 0.10%
+    fat_steps = int(fat / Decimal("0.10"))
+
+    fat_amount = fat_steps * FAT_STEP_RATE
+    bonus = calculate_bonus(total_litres)
+
+    price_per_litre = rate + fat_amount + bonus
+    total_amount = litres * price_per_litre
+
+    return price_per_litre, total_amount
+
+# Main program
+fat = Decimal(input("Enter Fat value: "))
+snf = Decimal(input("Enter SNF value: "))
+litres = Decimal(input("Enter milk litres: "))
+total_litres = Decimal(input("Enter 10-day total litres: "))
+
+season = input("Enter season (normal/seasonal): ").lower()
+
+if season == "seasonal":
+    rate = Decimal(input("Enter seasonal base rate: "))
+else:
+    rate = BASE_RATE
+
+if fat < 0 or snf < 0 or litres < 0 or total_litres < 0:
+    print("Invalid input")
+else:
+    price, amount = calculate_payment(
+        litres, fat, snf, rate, total_litres
+    )
+
+    print("\n--- MILK PAYMENT DETAILS ---")
+    print("Fat:", format(fat, ".2f"))
+    print("SNF:", format(snf, ".2f"))
+    print("Rate per litre: Rs.", price.quantize(Decimal("0.01")))
+    print("Total payment: Rs.", amount.quantize(Decimal("0.01")))
