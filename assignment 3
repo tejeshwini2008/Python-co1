@@ -1,1 +1,142 @@
 
+import re
+import time
+
+# Normalize phone number
+def normalize_number(number):
+    digits = re.sub(r'\D', '', number)
+
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+
+    return digits
+
+
+# Normalize name
+def normalize_name(name):
+    return " ".join(name.lower().split())
+
+
+# Merge contacts
+def merge_contacts(contacts):
+    number_map = {}
+    groups = []
+
+    for contact in contacts:
+        name = contact.get("name", "").strip()
+        numbers = contact.get("numbers", [])
+        emails = contact.get("emails", [])
+
+        clean_numbers = {
+            normalize_number(n) for n in numbers
+            if normalize_number(n)
+        }
+
+        clean_emails = {
+            e.strip().lower() for e in emails if e.strip()
+        }
+
+        if not clean_numbers:
+            groups.append({
+                "names": {name} if name else set(),
+                "numbers": set(),
+                "emails": clean_emails
+            })
+            continue
+
+        matched = {
+            id(number_map[n]): number_map[n]
+            for n in clean_numbers if n in number_map
+        }
+
+        if matched:
+            group = next(iter(matched.values()))
+
+            for other in matched.values():
+                if other is not group:
+                    group["names"].update(other["names"])
+                    group["numbers"].update(other["numbers"])
+                    group["emails"].update(other["emails"])
+                    groups.remove(other)
+        else:
+            group = {
+                "names": set(),
+                "numbers": set(),
+                "emails": set()
+            }
+            groups.append(group)
+
+        if name:
+            group["names"].add(name)
+
+        group["numbers"].update(clean_numbers)
+        group["emails"].update(clean_emails)
+
+        for number in group["numbers"]:
+            number_map[number] = group
+
+    return groups
+
+
+# Sample contacts
+contacts = [
+    {
+        "name": "Dr. Ravi",
+        "numbers": ["+91 98400 12345"],
+        "emails": ["ravi@gmail.com"]
+    },
+    {
+        "name": "ravi kumar",
+        "numbers": ["9840012345", "9876543210"],
+        "emails": ["ravi@gmail.com"]
+    },
+    {
+        "name": "Ravi",
+        "numbers": ["9876543210"],
+        "emails": ["ravi123@gmail.com"]
+    },
+    {
+        "name": "Anu",
+        "numbers": ["9123456789"],
+        "emails": ["anu@gmail.com"]
+    }
+]
+
+# Measure execution time
+start = time.perf_counter()
+
+result = merge_contacts(contacts)
+
+end = time.perf_counter()
+
+# Display merged contacts
+print("MERGED CONTACTS")
+
+for i, contact in enumerate(result, 1):
+    print("\nContact", i)
+    print("Names:", sorted(contact["names"]))
+    print("Numbers:", sorted(contact["numbers"]))
+    print("Emails:", sorted(contact["emails"]))
+
+print("\nExecution Time:", end - start, "seconds")
+
+
+# Performance measurement
+for size in [1000, 100000]:
+    test_data = [
+        {
+            "name": "Person " + str(i % 500),
+            "numbers": ["900000" + str(i % 500).zfill(4)],
+            "emails": ["person" + str(i % 500) + "@gmail.com"]
+        }
+        for i in range(size)
+    ]
+
+    start = time.perf_counter()
+    merged = merge_contacts(test_data)
+    end = time.perf_counter()
+
+    print("\nInput Contacts:", size)
+    print("Merged Contacts:", len(merged))
+    print("Execution Time:", end - start, "seconds")
+
